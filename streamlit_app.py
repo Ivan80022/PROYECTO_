@@ -1,151 +1,97 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import plotly.express as px
+from collections import Counter
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+# Función para contar aminoácidos en una secuencia de proteína
+def calcular_aminacidos(proteina):
+    return Counter(proteina)
+
+# Diccionario ampliado de proteínas con sus secuencias
+proteinas = {
+    "Hemoglobina": "VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
+    "Insulina": "FVNQHLCGSHLVEALYLVCGERGFFYTPKA",
+    "Colágeno": "GPPGPPGPPGPPGPPGPPGPPGPPGPPGPP",
+    "Mioglobina": "GLSDGEWQQVLNVWGKVEADIPGHGQEVLIRLFKSHPETLEKFDR",
+    "Actina": "MDDDIAALVVDNGSGMCKAGFAGDDAPRAVFPSIVGRPRHQGVMVGMGQKDSYVGDEAQSKRGILTLKYPIEHGIVTNWDDMEKIWHHTFYNELRVAPEEHPVLLTEAPLNPKANREKMTQIMFETFNVPAMYVAIQAVLSLYASGRTTGIVMDSGDGVTHTVPIYEGYALPHAIMRLVDEFARKKF",
+    "Queratina": "MDKVLKRLKKILRDFGLAKTGCCVPVSGLCYVKNMDVTQGLCKRLE",
+    "Tripsina": "IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSRI",
+    "Lisozima": "KVFERCELARTLKRLGMDGYRGISLANWMCLAKWESGYNTQATNRNTDGSTDYGILQINSRWWCNDGRTPGSRNLCNIPC",
+    "Elastina": "VPGVGVPGLGVPGVGVPGLGVPGVGVPGLGVPGVGVPGLGVPGVGVPGLGVPGV",
+    "Pepsina": "VLGIVLFLVVAAQGSKKDGDQVKIFQNRWTQYPIAGWGEEGVALPQEA",
+}
+
+# Diccionario con nombres completos de los aminoácidos
+aminoacidos_info = {
+    "A": "Alanina",
+    "R": "Arginina",
+    "N": "Asparagina",
+    "D": "Aspartato",
+    "C": "Cisteína",
+    "E": "Glutamato",
+    "Q": "Glutamina",
+    "G": "Glicina",
+    "H": "Histidina",
+    "I": "Isoleucina",
+    "L": "Leucina",
+    "K": "Lisina",
+    "M": "Metionina",
+    "F": "Fenilalanina",
+    "P": "Prolina",
+    "S": "Serina",
+    "T": "Treonina",
+    "W": "Triptófano",
+    "Y": "Tirosina",
+    "V": "Valina"
+}
+
+# Configurar título con estilo
+st.markdown("<h1 style='color: teal;'>Cálculo de Aminoácidos de una Proteína</h1>", unsafe_allow_html=True)
+
+# Barra lateral para elegir la proteína
+st.sidebar.header("Selecciona una proteína")
+opcion = st.sidebar.selectbox("Proteínas disponibles:", list(proteinas.keys()))
+
+# Mostrar nombre de la proteína seleccionada con estilo
+st.markdown(f"<h2 style='color: darkblue;'>Proteína seleccionada: {opcion}</h2>", unsafe_allow_html=True)
+
+# Obtener secuencia de la proteína
+secuencia = proteinas[opcion]
+
+# Calcular la cantidad de aminoácidos
+conteo = calcular_aminacidos(secuencia)
+
+# Crear DataFrame con los datos
+df = pd.DataFrame(
+    {
+        "Aminoácido (1 letra)": list(conteo.keys()),
+        "Nombre completo": [aminoacidos_info[aa] for aa in conteo.keys()],
+        "Cantidad": list(conteo.values()),
+    }
 )
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# Ordenar el DataFrame por cantidad de aminoácidos
+df = df.sort_values(by="Cantidad", ascending=False)
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+# Mostrar la secuencia y tabla de aminoácidos
+st.markdown("<h3 style='color: orange;'>Secuencia de la proteína:</h3>", unsafe_allow_html=True)
+st.text(secuencia)
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+st.markdown("<h3 style='color: green;'>Conteo de aminoácidos:</h3>", unsafe_allow_html=True)
+st.dataframe(df)
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
-
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
-
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
-
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
-
-    return gdp_df
-
-gdp_df = get_gdp_data()
-
-# -----------------------------------------------------------------------------
-# Draw the actual page
-
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
-
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
-
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
+# Generar gráfica interactiva usando Plotly
+st.markdown("<h3 style='color: purple;'>Gráfica de aminoácidos:</h3>", unsafe_allow_html=True)
+fig = px.bar(
+    df,
+    x="Aminoácido (1 letra)",
+    y="Cantidad",
+    text="Cantidad",
+    color="Cantidad",
+    color_continuous_scale="viridis",
+    title=f"Distribución de aminoácidos en {opcion}",
+    labels={"Cantidad": "Frecuencia", "Aminoácido (1 letra)": "Aminoácido"},
 )
+fig.update_layout(title_x=0.5)
+st.plotly_chart(fig)
 
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
