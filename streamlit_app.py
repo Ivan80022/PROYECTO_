@@ -7,7 +7,7 @@ from collections import Counter
 def calcular_aminacidos(proteina):
     return Counter(proteina)
 
-st.markdown("<h3 style='color: purple;'>Este sitio web es para saber como identificar aminoacidos de unas proteinas del ser humano ademas tenemos varias porteinas para que tu elijas.</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='color: black;'>Este sitio web es para saber como identificar aminoacidos de unas proteinas del ser humano ademas tenemos varias porteinas para que tu elijas.</h3>", unsafe_allow_html=True)
 # Diccionario ampliado de proteínas con sus secuencias
 proteinas = {
     "Hemoglobina": "VLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHF",
@@ -95,4 +95,4 @@ fig = px.bar(
 )
 fig.update_layout(title_x=0.5)
 st.plotly_chart(fig)
-st.markdown("<h3 style='color: purple;'>Integrantes: Alcantara Leal Ariadne y Pedro Borbon Aguirre.</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='color: yellow;'>Integrantes: Alcantara Leal Ariadne y Pedro Borbon Aguirre.</h3>", unsafe_allow_html=True)
